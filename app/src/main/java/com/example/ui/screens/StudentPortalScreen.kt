@@ -37,7 +37,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import com.example.data.UserAccountEntity
 import com.example.ui.components.SchoolPortalTopBar
 import com.example.ui.viewmodel.SchoolUiState
 import com.example.ui.viewmodel.SchoolViewModel
@@ -58,9 +57,10 @@ private val studentTabs = listOf(
 
 @Composable
 fun StudentPortalScreen(
-    user: UserAccountEntity,
+    userDisplayName: String,
     uiState: SchoolUiState,
-    viewModel: SchoolViewModel
+    viewModel: SchoolViewModel,
+    onLogout: () -> Unit
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -86,8 +86,8 @@ fun StudentPortalScreen(
             topBar = {
                 SchoolPortalTopBar(
                     portalBadge = "STUDENT / PARENT",
-                    userName = student?.name ?: user.fullName,
-                    onLogout = viewModel::logout
+                    userName = student?.name ?: userDisplayName,
+                    onLogout = onLogout
                 )
             },
             snackbarHost = { SnackbarHost(hostState = snackbarHostState) },

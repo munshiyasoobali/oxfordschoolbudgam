@@ -1,0 +1,288 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Default-Deny Catch-All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- GLOBAL HELPERS ---
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isManagement() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/school_config/management) &&
+        get(/databases/$(database)/documents/school_config/management).data.adminUid == request.auth.uid;
+    }
+
+    function linkedStudentId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.studentId;
+    }
+
+    function hasLinkedStudent() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    // --- VALIDATION BLUEPRINTS ---
+    function isValidManagementConfig(data) {
+      return data.adminUid is string && data.adminUid.size() >= 1 && data.adminUid.size() <= 128 &&
+             data.maskedEmail is string && data.maskedEmail.size() >= 3 && data.maskedEmail.size() <= 120 &&
+             data.adminName is string && data.adminName.size() >= 1 && data.adminName.size() <= 120 &&
+             data.claimedAt is timestamp && data.claimedAt <= request.time;
+    }
+
+    function isValidPaymentAccount(data) {
+      return data.accountHolderName is string && data.accountHolderName.size() >= 2 && data.accountHolderName.size() <= 120 &&
+             data.upiId is string && data.upiId.size() <= 100 &&
+             data.bankName is string && data.bankName.size() <= 100 &&
+             data.accountNumber is string && data.accountNumber.size() <= 40 &&
+             data.ifscCode is string && data.ifscCode.size() <= 20 &&
+             data.updatedByUid is string && data.updatedByUid == request.auth.uid &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.studentId is string && data.studentId.size() >= 1 && data.studentId.size() <= 64 &&
+             data.rollNo is string && data.rollNo.size() >= 1 && data.rollNo.size() <= 64 &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidStudent(data) {
+      return data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             data.grade is string && data.grade.size() >= 1 && data.grade.size() <= 40 &&
+             data.rollNo is string && data.rollNo.size() >= 1 && data.rollNo.size() <= 40 &&
+             data.parentName is string && data.parentName.size() >= 1 && data.parentName.size() <= 100 &&
+             data.contactNumber is string && data.contactNumber.size() >= 1 && data.contactNumber.size() <= 40 &&
+             data.admissionYear is string && data.admissionYear.size() >= 2 && data.admissionYear.size() <= 12 &&
+             data.parentUid is string && data.parentUid.size() <= 128 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidAttendance(data) {
+      return data.studentId is string && data.studentId.size() >= 1 && data.studentId.size() <= 64 &&
+             data.parentUid is string && data.parentUid.size() <= 128 &&
+             data.days is map && data.days.size() <= 31 &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidFee(data) {
+      return data.studentId is string && data.studentId.size() >= 1 && data.studentId.size() <= 64 &&
+             data.studentName is string && data.studentName.size() >= 1 && data.studentName.size() <= 100 &&
+             data.rollNo is string && data.rollNo.size() >= 1 && data.rollNo.size() <= 40 &&
+             data.grade is string && data.grade.size() >= 1 && data.grade.size() <= 40 &&
+             data.parentUid is string && data.parentUid.size() <= 128 &&
+             data.monthLabel is string && data.monthLabel.size() >= 1 && data.monthLabel.size() <= 50 &&
+             data.tuitionFee is int && data.tuitionFee >= 0 && data.tuitionFee <= 1000000 &&
+             data.transportFee is int && data.transportFee >= 0 && data.transportFee <= 1000000 &&
+             data.examFee is int && data.examFee >= 0 && data.examFee <= 1000000 &&
+             data.totalAmount is int && data.totalAmount >= 0 && data.totalAmount <= 3000000 &&
+             data.status in ['PAID', 'PENDING', 'OVERDUE'] &&
+             data.receiptNumber is string && data.receiptNumber.size() <= 60 &&
+             data.paidDate is string && data.paidDate.size() <= 40 &&
+             data.paymentMethod is string && data.paymentMethod.size() <= 80 &&
+             data.transactionRef is string && data.transactionRef.size() <= 100 &&
+             data.payerAccountNote is string && data.payerAccountNote.size() <= 120 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidDiary(data) {
+      return data.title is string && data.title.size() >= 1 && data.title.size() <= 150 &&
+             data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 60 &&
+             data.description is string && data.description.size() >= 1 && data.description.size() <= 2000 &&
+             data.targetClass is string && data.targetClass.size() >= 1 && data.targetClass.size() <= 60 &&
+             data.dateLabel is string && data.dateLabel.size() >= 1 && data.dateLabel.size() <= 40 &&
+             data.teacherRemarks is string && data.teacherRemarks.size() <= 500 &&
+             data.entryType in ['HOMEWORK', 'NOTICE'] &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidHomeworkCompletion(data) {
+      return data.diaryId is string && data.diaryId.size() >= 1 && data.diaryId.size() <= 128 &&
+             data.completed is bool &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // --- COLLECTION RULES ---
+
+    // Single-Account School Management Lock
+    match /school_config/management {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn() &&
+                       !exists(/databases/$(database)/documents/school_config/management) &&
+                       incoming().keys().hasAll(['adminUid', 'maskedEmail', 'adminName', 'claimedAt']) &&
+                       incoming().keys().hasOnly(['adminUid', 'maskedEmail', 'adminName', 'claimedAt']) &&
+                       incoming().adminUid == request.auth.uid &&
+                       isValidManagementConfig(incoming());
+      allow update, delete: if false;
+    }
+
+    // School Real UPI & Bank Settlement Account
+    match /school_config/payment_account {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isManagement() &&
+                       incoming().keys().hasAll(['accountHolderName', 'upiId', 'bankName', 'accountNumber', 'ifscCode', 'updatedByUid', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['accountHolderName', 'upiId', 'bankName', 'accountNumber', 'ifscCode', 'updatedByUid', 'updatedAt']) &&
+                       isValidPaymentAccount(incoming());
+      allow update: if isManagement() &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['accountHolderName', 'upiId', 'bankName', 'accountNumber', 'ifscCode', 'updatedByUid', 'updatedAt']) &&
+                       isValidPaymentAccount(incoming());
+      allow delete: if false;
+    }
+
+    // Parent & Student Account Linking Profile
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+      allow list: if false;
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'studentId', 'rollNo', 'displayName', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'studentId', 'rollNo', 'displayName', 'createdAt', 'updatedAt']) &&
+                       isValidUserProfile(incoming());
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['studentId', 'rollNo', 'displayName', 'updatedAt']) &&
+                       isValidUserProfile(incoming());
+      allow delete: if false;
+
+      match /homework_completions/{diaryId} {
+        allow get, list: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(diaryId) &&
+                         request.auth.uid == userId &&
+                         incoming().diaryId == diaryId &&
+                         incoming().keys().hasAll(['diaryId', 'completed', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['diaryId', 'completed', 'updatedAt']) &&
+                         isValidHomeworkCompletion(incoming());
+        allow update: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(diaryId) &&
+                         request.auth.uid == userId &&
+                         incoming().diaryId == existing().diaryId &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['completed', 'updatedAt']) &&
+                         isValidHomeworkCompletion(incoming());
+        allow delete: if isSignedIn() && isValidId(userId) && isValidId(diaryId) && request.auth.uid == userId;
+      }
+    }
+
+    // Students Directory (keyed by sanitized Roll Number)
+    match /students/{studentId} {
+      allow get: if isValidId(studentId) && (
+        isManagement() ||
+        (isSignedIn() && (resource == null || existing().parentUid == request.auth.uid || existing().parentUid == ''))
+      );
+      allow list: if isManagement() || (isSignedIn() && existing().parentUid == request.auth.uid);
+      allow create: if isValidId(studentId) &&
+                       incoming().keys().hasAll(['name', 'grade', 'rollNo', 'parentName', 'contactNumber', 'admissionYear', 'parentUid', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['name', 'grade', 'rollNo', 'parentName', 'contactNumber', 'admissionYear', 'parentUid', 'createdAt', 'updatedAt']) &&
+                       isValidStudent(incoming()) &&
+                       (isManagement() || (isSignedIn() && incoming().parentUid == request.auth.uid));
+      allow update: if isValidId(studentId) &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidStudent(incoming()) && (
+                         (isManagement() && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'grade', 'parentName', 'contactNumber', 'admissionYear', 'parentUid', 'updatedAt'])) ||
+                         (isSignedIn() && existing().parentUid == '' && incoming().parentUid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['parentUid', 'updatedAt']))
+                       );
+      allow delete: if isManagement() && isValidId(studentId);
+    }
+
+    // 30-Day Attendance Register (1 document per student)
+    match /attendance/{studentId} {
+      allow get: if isValidId(studentId) && (
+        isManagement() ||
+        (isSignedIn() && (
+          (resource != null && existing().parentUid == request.auth.uid) ||
+          (hasLinkedStudent() && linkedStudentId() == studentId)
+        ))
+      );
+      allow list: if isManagement() || (isSignedIn() && (existing().parentUid == request.auth.uid || (hasLinkedStudent() && linkedStudentId() == existing().studentId)));
+      allow create: if isValidId(studentId) &&
+                       incoming().studentId == studentId &&
+                       incoming().keys().hasAll(['studentId', 'parentUid', 'days', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['studentId', 'parentUid', 'days', 'updatedAt']) &&
+                       isValidAttendance(incoming()) &&
+                       (isManagement() || (isSignedIn() && incoming().parentUid == request.auth.uid));
+      allow update: if isManagement() &&
+                       isValidId(studentId) &&
+                       incoming().studentId == existing().studentId &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['days', 'parentUid', 'updatedAt']) &&
+                       isValidAttendance(incoming());
+      allow delete: if isManagement() && isValidId(studentId);
+    }
+
+    // Monthly Fee Invoices (Rs) & Real Account-to-Account Payments
+    match /fees/{feeId} {
+      allow get: if isValidId(feeId) && (
+        isManagement() ||
+        (isSignedIn() && (existing().parentUid == request.auth.uid || (hasLinkedStudent() && linkedStudentId() == existing().studentId)))
+      );
+      allow list: if isManagement() || (isSignedIn() && (existing().parentUid == request.auth.uid || (hasLinkedStudent() && linkedStudentId() == existing().studentId)));
+      allow create: if isManagement() &&
+                       isValidId(feeId) &&
+                       incoming().keys().hasAll(['studentId', 'studentName', 'rollNo', 'grade', 'parentUid', 'monthLabel', 'tuitionFee', 'transportFee', 'examFee', 'totalAmount', 'status', 'receiptNumber', 'paidDate', 'paymentMethod', 'transactionRef', 'payerAccountNote', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['studentId', 'studentName', 'rollNo', 'grade', 'parentUid', 'monthLabel', 'tuitionFee', 'transportFee', 'examFee', 'totalAmount', 'status', 'receiptNumber', 'paidDate', 'paymentMethod', 'transactionRef', 'payerAccountNote', 'createdAt', 'updatedAt']) &&
+                       isValidFee(incoming());
+      allow update: if isValidId(feeId) &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().studentId == existing().studentId &&
+                       isValidFee(incoming()) && (
+                         (isManagement() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'receiptNumber', 'paidDate', 'paymentMethod', 'transactionRef', 'payerAccountNote', 'parentUid', 'updatedAt'])) ||
+                         (
+                           isSignedIn() &&
+                           (existing().parentUid == request.auth.uid || (hasLinkedStudent() && linkedStudentId() == existing().studentId)) &&
+                           existing().status != 'PAID' &&
+                           incoming().status == 'PAID' &&
+                           incoming().totalAmount == existing().totalAmount &&
+                           incoming().transactionRef.size() >= 6 &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['status', 'receiptNumber', 'paidDate', 'paymentMethod', 'transactionRef', 'payerAccountNote', 'parentUid', 'updatedAt'])
+                         )
+                       );
+      allow delete: if isManagement() && isValidId(feeId);
+    }
+
+    // Daily School Diary & Notice Board (No PII stored here)
+    match /diary/{diaryId} {
+      allow get: if isSignedIn() && isValidId(diaryId);
+      allow list: if isSignedIn();
+      allow create: if isManagement() &&
+                       isValidId(diaryId) &&
+                       incoming().keys().hasAll(['title', 'subject', 'description', 'targetClass', 'dateLabel', 'teacherRemarks', 'entryType', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['title', 'subject', 'description', 'targetClass', 'dateLabel', 'teacherRemarks', 'entryType', 'createdAt', 'updatedAt']) &&
+                       isValidDiary(incoming());
+      allow update: if isManagement() &&
+                       isValidId(diaryId) &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['title', 'subject', 'description', 'targetClass', 'dateLabel', 'teacherRemarks', 'entryType', 'updatedAt']) &&
+                       isValidDiary(incoming());
+      allow delete: if isManagement() && isValidId(diaryId);
+    }
+  }
+}

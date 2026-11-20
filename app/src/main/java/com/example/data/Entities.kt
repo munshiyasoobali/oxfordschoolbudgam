@@ -1,18 +1,15 @@
 package com.example.data
 
-import androidx.room.Entity
-import androidx.room.ForeignKey
-import androidx.room.Index
-import androidx.room.PrimaryKey
+import androidx.annotation.Keep
+import com.google.firebase.Timestamp
+import com.google.firebase.firestore.DocumentId
+import com.google.firebase.firestore.Exclude
+import com.google.firebase.firestore.IgnoreExtraProperties
+import com.google.firebase.firestore.ServerTimestamp
 
-enum class UserRole(val storageKey: String, val displayName: String) {
-    ADMIN("ADMIN", "School Management"),
-    STUDENT_PARENT("STUDENT_PARENT", "Student / Parent");
-
-    companion object {
-        fun fromKey(key: String): UserRole =
-            entries.firstOrNull { it.storageKey == key } ?: STUDENT_PARENT
-    }
+enum class PortalIntent(val displayName: String) {
+    PARENT_STUDENT("Parent / Student Portal"),
+    MANAGEMENT("School Management Portal")
 }
 
 enum class AttendanceStatus(val code: String, val label: String) {
@@ -27,7 +24,7 @@ enum class AttendanceStatus(val code: String, val label: String) {
     }
 
     companion object {
-        fun fromCode(code: String): AttendanceStatus =
+        fun fromCode(code: String?): AttendanceStatus =
             entries.firstOrNull { it.code == code } ?: PRESENT
     }
 }
@@ -38,118 +35,131 @@ enum class FeeStatus(val key: String, val label: String) {
     OVERDUE("OVERDUE", "Overdue");
 
     companion object {
-        fun fromKey(key: String): FeeStatus =
+        fun fromKey(key: String?): FeeStatus =
             entries.firstOrNull { it.key == key } ?: PENDING
     }
 }
 
-@Entity(
-    tableName = "user_accounts",
-    indices = [Index(value = ["contactIdentifier"], unique = true)]
-)
-data class UserAccountEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val fullName: String,
-    val role: String,
-    val rollNumber: String = "",
-    val contactIdentifier: String,
-    val password: String
+@Keep
+@IgnoreExtraProperties
+data class ManagementConfig(
+    @DocumentId val id: String = "",
+    val adminUid: String = "",
+    val maskedEmail: String = "",
+    val adminName: String = "",
+    @ServerTimestamp val claimedAt: Timestamp? = null
 )
 
-@Entity(
-    tableName = "students",
-    indices = [Index(value = ["rollNo"], unique = true)]
-)
-data class StudentEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val name: String,
-    val grade: String,
-    val rollNo: String,
-    val parentName: String,
-    val contactNumber: String,
-    val admissionYear: String = "2026"
+@Keep
+@IgnoreExtraProperties
+data class SchoolPaymentAccount(
+    @DocumentId val id: String = "",
+    val accountHolderName: String = "OXFORD SCHOOL EDUCATION BUDGAM",
+    val upiId: String = "",
+    val bankName: String = "",
+    val accountNumber: String = "",
+    val ifscCode: String = "",
+    val updatedByUid: String = "",
+    @ServerTimestamp val updatedAt: Timestamp? = null
+) {
+    @get:Exclude
+    val hasUpiConfigured: Boolean
+        get() = upiId.isNotBlank() && upiId.contains("@")
+
+    @get:Exclude
+    val hasBankConfigured: Boolean
+        get() = bankName.isNotBlank() && accountNumber.isNotBlank() && ifscCode.isNotBlank()
+
+    @get:Exclude
+    val isConfigured: Boolean
+        get() = hasUpiConfigured || hasBankConfigured
+}
+
+@Keep
+@IgnoreExtraProperties
+data class UserLinkProfile(
+    @DocumentId val id: String = "",
+    val userId: String = "",
+    val studentId: String = "",
+    val rollNo: String = "",
+    val displayName: String = "",
+    @ServerTimestamp val createdAt: Timestamp? = null,
+    @ServerTimestamp val updatedAt: Timestamp? = null
 )
 
-@Entity(
-    tableName = "attendance",
-    primaryKeys = ["studentId", "dayOfMonth"],
-    foreignKeys = [
-        ForeignKey(
-            entity = StudentEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["studentId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index(value = ["studentId"])]
-)
-data class AttendanceEntity(
-    val studentId: Long,
-    val dayOfMonth: Int,
-    val status: String
+@Keep
+@IgnoreExtraProperties
+data class StudentRecord(
+    @DocumentId val id: String = "",
+    val name: String = "",
+    val grade: String = "",
+    val rollNo: String = "",
+    val parentName: String = "",
+    val contactNumber: String = "",
+    val admissionYear: String = "2026",
+    val parentUid: String = "",
+    @ServerTimestamp val createdAt: Timestamp? = null,
+    @ServerTimestamp val updatedAt: Timestamp? = null
 )
 
-@Entity(
-    tableName = "fee_records",
-    foreignKeys = [
-        ForeignKey(
-            entity = StudentEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["studentId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index(value = ["studentId"])]
+@Keep
+@IgnoreExtraProperties
+data class AttendanceRecord(
+    @DocumentId val id: String = "",
+    val studentId: String = "",
+    val parentUid: String = "",
+    val days: Map<String, String> = emptyMap(),
+    @ServerTimestamp val updatedAt: Timestamp? = null
 )
-data class FeeRecordEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val studentId: Long,
-    val monthLabel: String,
-    val tuitionFee: Int,
-    val transportFee: Int,
-    val examFee: Int,
-    val status: String,
+
+@Keep
+@IgnoreExtraProperties
+data class FeeRecord(
+    @DocumentId val id: String = "",
+    val studentId: String = "",
+    val studentName: String = "",
+    val rollNo: String = "",
+    val grade: String = "",
+    val parentUid: String = "",
+    val monthLabel: String = "",
+    val tuitionFee: Int = 0,
+    val transportFee: Int = 0,
+    val examFee: Int = 0,
+    val totalAmount: Int = 0,
+    val status: String = FeeStatus.PENDING.key,
     val receiptNumber: String = "",
     val paidDate: String = "",
     val paymentMethod: String = "School Counter",
-    val transactionRef: String = ""
+    val transactionRef: String = "",
+    val payerAccountNote: String = "",
+    @ServerTimestamp val createdAt: Timestamp? = null,
+    @ServerTimestamp val updatedAt: Timestamp? = null
+)
+
+@Keep
+@IgnoreExtraProperties
+data class DiaryEntry(
+    @DocumentId val id: String = "",
+    val title: String = "",
+    val subject: String = "",
+    val description: String = "",
+    val targetClass: String = "",
+    val dateLabel: String = "",
+    val teacherRemarks: String = "",
+    val entryType: String = "HOMEWORK",
+    @ServerTimestamp val createdAt: Timestamp? = null,
+    @ServerTimestamp val updatedAt: Timestamp? = null
 ) {
-    val totalAmount: Int get() = tuitionFee + transportFee + examFee
+    @get:Exclude
+    val isNoticeEntry: Boolean
+        get() = entryType.equals("NOTICE", ignoreCase = true)
 }
 
-@Entity(tableName = "diary_entries")
-data class DiaryEntryEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val title: String,
-    val subject: String,
-    val description: String,
-    val targetClass: String,
-    val dateLabel: String,
-    val teacherRemarks: String = "",
-    val isNotice: Boolean = false
-)
-
-@Entity(
-    tableName = "homework_completions",
-    primaryKeys = ["diaryId", "studentId"],
-    foreignKeys = [
-        ForeignKey(
-            entity = DiaryEntryEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["diaryId"],
-            onDelete = ForeignKey.CASCADE
-        ),
-        ForeignKey(
-            entity = StudentEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["studentId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index(value = ["studentId"])]
-)
-data class HomeworkCompletionEntity(
-    val diaryId: Long,
-    val studentId: Long,
-    val completed: Boolean
+@Keep
+@IgnoreExtraProperties
+data class HomeworkCompletion(
+    @DocumentId val id: String = "",
+    val diaryId: String = "",
+    val completed: Boolean = false,
+    @ServerTimestamp val updatedAt: Timestamp? = null
 )

@@ -60,12 +60,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.data.AttendanceStatus
-import com.example.data.DiaryEntryEntity
-import com.example.data.FeeRecordEntity
+import com.example.data.DiaryEntry
+import com.example.data.FeeRecord
 import com.example.data.FeeStatus
 import com.example.data.SchoolPaymentAccount
 import com.example.data.SchoolRepository
-import com.example.data.StudentEntity
+import com.example.data.StudentRecord
 import com.example.ui.components.AttendanceColorSpec
 import com.example.ui.components.DigitalFeeReceiptDialog
 import com.example.ui.components.FeeStatusBadge
@@ -87,11 +87,11 @@ import com.example.ui.theme.StatusPresentGreen
 
 @Composable
 fun StudentProfileOverviewTab(
-    student: StudentEntity,
+    student: StudentRecord,
     attendanceMap: Map<Int, AttendanceStatus>,
-    studentFees: List<FeeRecordEntity>,
-    diaryEntries: List<DiaryEntryEntity>,
-    completedHomeworkIds: Set<Long>,
+    studentFees: List<FeeRecord>,
+    diaryEntries: List<DiaryEntry>,
+    completedHomeworkIds: Set<String>,
     onNavigateTab: (Int) -> Unit
 ) {
     val presentDays = (1..30).count { (attendanceMap[it] ?: AttendanceStatus.PRESENT) == AttendanceStatus.PRESENT }
@@ -100,8 +100,8 @@ fun StudentProfileOverviewTab(
     val relevantDiary = diaryEntries.filter {
         it.targetClass == "All Classes" || it.targetClass.equals(student.grade, ignoreCase = true)
     }
-    val homeworkCount = relevantDiary.count { !it.isNotice }
-    val completedCount = relevantDiary.count { !it.isNotice && it.id in completedHomeworkIds }
+    val homeworkCount = relevantDiary.count { !it.isNoticeEntry }
+    val completedCount = relevantDiary.count { !it.isNoticeEntry && it.id in completedHomeworkIds }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -341,7 +341,7 @@ fun StudentProfileOverviewTab(
 
 @Composable
 fun StudentAttendanceTab(
-    student: StudentEntity,
+    student: StudentRecord,
     attendanceMap: Map<Int, AttendanceStatus>
 ) {
     val presentCount = (1..30).count { (attendanceMap[it] ?: AttendanceStatus.PRESENT) == AttendanceStatus.PRESENT }
@@ -470,13 +470,13 @@ fun StudentAttendanceTab(
 
 @Composable
 fun StudentFeesTab(
-    student: StudentEntity,
-    studentFees: List<FeeRecordEntity>,
+    student: StudentRecord,
+    studentFees: List<FeeRecord>,
     paymentAccount: SchoolPaymentAccount,
-    onRecordPayment: (fee: FeeRecordEntity, paymentMethod: String, transactionRef: String) -> Unit
+    onRecordPayment: (fee: FeeRecord, paymentMethod: String, transactionRef: String, payerAccountNote: String) -> Unit
 ) {
-    var receiptToPrint by remember { mutableStateOf<FeeRecordEntity?>(null) }
-    var feeToPay by remember { mutableStateOf<FeeRecordEntity?>(null) }
+    var receiptToPrint by remember { mutableStateOf<FeeRecord?>(null) }
+    var feeToPay by remember { mutableStateOf<FeeRecord?>(null) }
 
     val totalPaid = studentFees.filter { FeeStatus.fromKey(it.status) == FeeStatus.PAID }.sumOf { it.totalAmount }
     val totalPending = studentFees.filter { FeeStatus.fromKey(it.status) != FeeStatus.PAID }.sumOf { it.totalAmount }
@@ -636,8 +636,8 @@ fun StudentFeesTab(
             student = student,
             account = paymentAccount,
             onDismiss = { feeToPay = null },
-            onPaymentConfirmed = { method, ref ->
-                onRecordPayment(fee, method, ref)
+            onPaymentConfirmed = { method, ref, payerNote ->
+                onRecordPayment(fee, method, ref, payerNote)
                 feeToPay = null
             }
         )
@@ -667,10 +667,10 @@ private fun FeeBreakdownRow(label: String, amount: Int) {
 
 @Composable
 fun StudentDiaryTab(
-    student: StudentEntity,
-    diaryEntries: List<DiaryEntryEntity>,
-    completedHomeworkIds: Set<Long>,
-    onToggleCompleted: (diaryId: Long, completed: Boolean) -> Unit
+    student: StudentRecord,
+    diaryEntries: List<DiaryEntry>,
+    completedHomeworkIds: Set<String>,
+    onToggleCompleted: (diaryId: String, completed: Boolean) -> Unit
 ) {
     val relevantEntries = remember(diaryEntries, student.grade) {
         diaryEntries.filter {
@@ -720,7 +720,7 @@ fun StudentDiaryTab(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Surface(
-                                color = if (entry.isNotice) HeritageGoldContainer else OxfordNavyContainer,
+                                color = if (entry.isNoticeEntry) HeritageGoldContainer else OxfordNavyContainer,
                                 shape = RoundedCornerShape(6.dp)
                             ) {
                                 Row(
@@ -729,15 +729,15 @@ fun StudentDiaryTab(
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
                                     Icon(
-                                        imageVector = if (entry.isNotice) Icons.Filled.Campaign else Icons.Filled.MenuBook,
+                                        imageVector = if (entry.isNoticeEntry) Icons.Filled.Campaign else Icons.Filled.MenuBook,
                                         contentDescription = null,
-                                        tint = if (entry.isNotice) HeritageGoldOnContainer else OxfordNavy,
+                                        tint = if (entry.isNoticeEntry) HeritageGoldOnContainer else OxfordNavy,
                                         modifier = Modifier.size(14.dp)
                                     )
                                     Text(
                                         text = "${entry.subject} • ${entry.targetClass}",
                                         style = MaterialTheme.typography.labelSmall.copy(
-                                            color = if (entry.isNotice) HeritageGoldOnContainer else OxfordNavy,
+                                            color = if (entry.isNoticeEntry) HeritageGoldOnContainer else OxfordNavy,
                                             fontWeight = FontWeight.Bold
                                         )
                                     )
@@ -775,7 +775,7 @@ fun StudentDiaryTab(
                             }
                         }
 
-                        if (!entry.isNotice) {
+                        if (!entry.isNoticeEntry) {
                             HorizontalDivider()
                             Row(
                                 modifier = Modifier.fillMaxWidth(),

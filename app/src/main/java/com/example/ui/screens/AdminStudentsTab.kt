@@ -50,7 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.data.AttendanceStatus
 import com.example.data.SchoolRepository
-import com.example.data.StudentEntity
+import com.example.data.StudentRecord
 import com.example.ui.components.MetricSummaryCard
 import com.example.ui.components.StudentInitialsAvatar
 import com.example.ui.theme.HeritageGoldContainer
@@ -65,16 +65,16 @@ import com.example.ui.theme.StatusPresentGreen
 
 @Composable
 fun AdminStudentsTab(
-    students: List<StudentEntity>,
-    attendanceByStudent: Map<Long, Map<Int, AttendanceStatus>>,
+    students: List<StudentRecord>,
+    attendanceByStudent: Map<String, Map<Int, AttendanceStatus>>,
     totalCollectedRs: Int,
     totalPendingRs: Int,
-    onEditStudent: (StudentEntity) -> Unit,
-    onDeleteStudent: (StudentEntity) -> Unit
+    onEditStudent: (StudentRecord) -> Unit,
+    onDeleteStudent: (StudentRecord) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedGrade by remember { mutableStateOf("All") }
-    var studentPendingDelete by remember { mutableStateOf<StudentEntity?>(null) }
+    var studentPendingDelete by remember { mutableStateOf<StudentRecord?>(null) }
 
     val grades = remember(students) {
         listOf("All") + students.map { it.grade }.distinct().sorted()
@@ -330,7 +330,7 @@ fun AdminStudentsTab(
 
 @Composable
 fun StudentEditorDialog(
-    initialStudent: StudentEntity?,
+    initialStudent: StudentRecord?,
     onDismiss: () -> Unit,
     onSave: (name: String, grade: String, rollNo: String, parentName: String, contactNumber: String) -> Unit
 ) {

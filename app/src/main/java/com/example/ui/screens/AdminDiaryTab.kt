@@ -43,7 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.data.DiaryEntryEntity
+import com.example.data.DiaryEntry
 import com.example.data.SchoolRepository
 import com.example.ui.theme.HeritageGoldContainer
 import com.example.ui.theme.HeritageGoldOnContainer
@@ -53,15 +53,15 @@ import com.example.ui.theme.StatusAbsentRed
 
 @Composable
 fun AdminDiaryTab(
-    diaryEntries: List<DiaryEntryEntity>,
-    onDeleteEntry: (Long) -> Unit
+    diaryEntries: List<DiaryEntry>,
+    onDeleteEntry: (String) -> Unit
 ) {
     var filterMode by remember { mutableStateOf("All") }
 
     val filtered = remember(diaryEntries, filterMode) {
         when (filterMode) {
-            "Homework" -> diaryEntries.filter { !it.isNotice }
-            "Notices" -> diaryEntries.filter { it.isNotice }
+            "Homework" -> diaryEntries.filter { !it.isNoticeEntry }
+            "Notices" -> diaryEntries.filter { it.isNoticeEntry }
             else -> diaryEntries
         }
     }
@@ -126,7 +126,7 @@ fun AdminDiaryTab(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Surface(
-                                    color = if (entry.isNotice) HeritageGoldContainer else OxfordNavyContainer,
+                                    color = if (entry.isNoticeEntry) HeritageGoldContainer else OxfordNavyContainer,
                                     shape = RoundedCornerShape(6.dp)
                                 ) {
                                     Row(
@@ -135,15 +135,15 @@ fun AdminDiaryTab(
                                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                                     ) {
                                         Icon(
-                                            imageVector = if (entry.isNotice) Icons.Filled.Campaign else Icons.Filled.MenuBook,
+                                            imageVector = if (entry.isNoticeEntry) Icons.Filled.Campaign else Icons.Filled.MenuBook,
                                             contentDescription = null,
-                                            tint = if (entry.isNotice) HeritageGoldOnContainer else OxfordNavy,
+                                            tint = if (entry.isNoticeEntry) HeritageGoldOnContainer else OxfordNavy,
                                             modifier = Modifier.size(14.dp)
                                         )
                                         Text(
                                             text = entry.subject,
                                             style = MaterialTheme.typography.labelSmall.copy(
-                                                color = if (entry.isNotice) HeritageGoldOnContainer else OxfordNavy,
+                                                color = if (entry.isNoticeEntry) HeritageGoldOnContainer else OxfordNavy,
                                                 fontWeight = FontWeight.Bold
                                             )
                                         )

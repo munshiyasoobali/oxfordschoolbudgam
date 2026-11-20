@@ -54,10 +54,10 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import com.example.data.FeeRecordEntity
+import com.example.data.FeeRecord
 import com.example.data.SchoolPaymentAccount
 import com.example.data.SchoolRepository
-import com.example.data.StudentEntity
+import com.example.data.StudentRecord
 import com.example.ui.theme.HeritageGold
 import com.example.ui.theme.HeritageGoldContainer
 import com.example.ui.theme.HeritageGoldOnContainer
@@ -165,15 +165,16 @@ fun ConfigureBankAccountDialog(
 
 @Composable
 fun PayFeeAccountDialog(
-    fee: FeeRecordEntity,
-    student: StudentEntity,
+    fee: FeeRecord,
+    student: StudentRecord,
     account: SchoolPaymentAccount,
     onDismiss: () -> Unit,
-    onPaymentConfirmed: (paymentMethod: String, transactionRef: String) -> Unit
+    onPaymentConfirmed: (paymentMethod: String, transactionRef: String, payerAccountNote: String) -> Unit
 ) {
     val clipboardManager = LocalClipboardManager.current
     var transferMode by remember { mutableStateOf("UPI App") }
     var utrReference by remember { mutableStateOf("") }
+    var payerAccountNote by remember { mutableStateOf("") }
     var localFeedback by remember { mutableStateOf<String?>(null) }
 
     val upiLauncher = rememberLauncherForActivityResult(
@@ -183,7 +184,11 @@ fun PayFeeAccountDialog(
         val (success, txnId) = SchoolRepository.parseUpiResponse(response)
         if (result.resultCode == Activity.RESULT_OK && success) {
             val finalRef = txnId.ifBlank { "UPI-${System.currentTimeMillis() % 1000000}" }
-            onPaymentConfirmed("UPI App (${account.upiId})", finalRef)
+            onPaymentConfirmed(
+                "UPI App (${account.upiId})",
+                finalRef,
+                payerAccountNote.ifBlank { "Direct UPI App Payment" }
+            )
         } else {
             localFeedback = if (response.isNullOrBlank()) {
                 "UPI payment was cancelled or returned no status. If debited, enter your 12-digit UTR below."
@@ -378,6 +383,16 @@ fun PayFeeAccountDialog(
                             .testTag("utr_reference_input")
                     )
 
+                    OutlinedTextField(
+                        value = payerAccountNote,
+                        onValueChange = { payerAccountNote = it },
+                        label = { Text("Sender UPI ID / Bank A/C Last 4 (optional)") },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("payer_account_note_input")
+                    )
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -390,7 +405,7 @@ fun PayFeeAccountDialog(
                         }
                         Button(
                             onClick = {
-                                onPaymentConfirmed(transferMode, utrReference)
+                                onPaymentConfirmed(transferMode, utrReference, payerAccountNote)
                             },
                             enabled = utrReference.trim().length >= 6,
                             colors = ButtonDefaults.buttonColors(containerColor = OxfordNavy),

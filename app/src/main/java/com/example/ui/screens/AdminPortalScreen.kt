@@ -39,8 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import com.example.data.StudentEntity
-import com.example.data.UserAccountEntity
+import com.example.data.StudentRecord
 import com.example.ui.components.SchoolPortalTopBar
 import com.example.ui.theme.HeritageGold
 import com.example.ui.theme.OxfordNavy
@@ -63,13 +62,14 @@ private val adminTabs = listOf(
 
 @Composable
 fun AdminPortalScreen(
-    user: UserAccountEntity,
+    adminDisplayName: String,
     uiState: SchoolUiState,
-    viewModel: SchoolViewModel
+    viewModel: SchoolViewModel,
+    onLogout: () -> Unit
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var showStudentDialog by remember { mutableStateOf(false) }
-    var editingStudent by remember { mutableStateOf<StudentEntity?>(null) }
+    var editingStudent by remember { mutableStateOf<StudentRecord?>(null) }
     var showFeeDialog by remember { mutableStateOf(false) }
     var showDiaryDialog by remember { mutableStateOf(false) }
 
@@ -94,8 +94,8 @@ fun AdminPortalScreen(
             topBar = {
                 SchoolPortalTopBar(
                     portalBadge = "MANAGEMENT",
-                    userName = user.fullName,
-                    onLogout = viewModel::logout
+                    userName = adminDisplayName,
+                    onLogout = onLogout
                 )
             },
             snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -241,8 +241,8 @@ fun AdminPortalScreen(
         GenerateFeeInvoiceDialog(
             students = uiState.students,
             onDismiss = { showFeeDialog = false },
-            onCreate = { studentId, month, tuition, transport, exam, status ->
-                viewModel.addFeeInvoice(studentId, month, tuition, transport, exam, status)
+            onCreate = { student, month, tuition, transport, exam, status ->
+                viewModel.addFeeInvoice(student, month, tuition, transport, exam, status)
                 showFeeDialog = false
             }
         )

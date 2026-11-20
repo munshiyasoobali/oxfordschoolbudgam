@@ -54,10 +54,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.example.R
 import com.example.data.AttendanceStatus
-import com.example.data.FeeRecordEntity
+import com.example.data.FeeRecord
 import com.example.data.FeeStatus
 import com.example.data.SchoolRepository
-import com.example.data.StudentEntity
+import com.example.data.StudentRecord
 import com.example.ui.theme.HeritageGold
 import com.example.ui.theme.HeritageGoldContainer
 import com.example.ui.theme.HeritageGoldOnContainer
@@ -277,8 +277,8 @@ fun StudentInitialsAvatar(name: String, modifier: Modifier = Modifier) {
 
 @Composable
 fun DigitalFeeReceiptDialog(
-    feeRecord: FeeRecordEntity,
-    student: StudentEntity,
+    feeRecord: FeeRecord,
+    student: StudentRecord,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
@@ -388,6 +388,9 @@ fun DigitalFeeReceiptDialog(
                     if (feeRecord.transactionRef.isNotBlank()) {
                         ReceiptRow("UTR / Txn Ref", feeRecord.transactionRef, mono = true)
                     }
+                    if (feeRecord.payerAccountNote.isNotBlank()) {
+                        ReceiptRow("Payer Account", feeRecord.payerAccountNote)
+                    }
 
                     HorizontalDivider()
 
@@ -487,7 +490,7 @@ private fun ReceiptRow(label: String, value: String, mono: Boolean = false) {
     }
 }
 
-private fun shareReceiptText(context: Context, fee: FeeRecordEntity, student: StudentEntity) {
+private fun shareReceiptText(context: Context, fee: FeeRecord, student: StudentRecord) {
     val receiptText = buildString {
         appendLine("OXFORD SCHOOL EDUCATION BUDGAM")
         appendLine("OFFICIAL FEE RECEIPT")
@@ -501,6 +504,9 @@ private fun shareReceiptText(context: Context, fee: FeeRecordEntity, student: St
         appendLine("Payment Mode: ${fee.paymentMethod}")
         if (fee.transactionRef.isNotBlank()) {
             appendLine("UTR / Txn Ref: ${fee.transactionRef}")
+        }
+        if (fee.payerAccountNote.isNotBlank()) {
+            appendLine("Payer Account: ${fee.payerAccountNote}")
         }
         appendLine("--------------------------------")
         appendLine("Tuition Fee:   ${SchoolRepository.formatRs(fee.tuitionFee)}")

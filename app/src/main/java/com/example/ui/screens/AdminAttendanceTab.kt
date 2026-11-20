@@ -45,7 +45,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.data.AttendanceStatus
-import com.example.data.StudentEntity
+import com.example.data.StudentRecord
 import com.example.ui.components.AttendanceColorSpec
 import com.example.ui.theme.JetBrainsMonoFontFamily
 import com.example.ui.theme.OxfordNavy
@@ -58,9 +58,9 @@ import com.example.ui.theme.StatusPresentGreen
 
 @Composable
 fun AdminAttendanceTab(
-    students: List<StudentEntity>,
-    attendanceByStudent: Map<Long, Map<Int, AttendanceStatus>>,
-    onCycleAttendance: (studentId: Long, dayOfMonth: Int) -> Unit,
+    students: List<StudentRecord>,
+    attendanceByStudent: Map<String, Map<Int, AttendanceStatus>>,
+    onCycleAttendance: (studentId: String, dayOfMonth: Int) -> Unit,
     onMarkAllPresentForDay: (dayOfMonth: Int) -> Unit
 ) {
     val sharedHorizontalScroll = rememberScrollState()

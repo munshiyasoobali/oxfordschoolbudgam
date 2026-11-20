@@ -54,11 +54,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.example.data.FeeRecordEntity
+import com.example.data.FeeRecord
 import com.example.data.FeeStatus
 import com.example.data.SchoolPaymentAccount
 import com.example.data.SchoolRepository
-import com.example.data.StudentEntity
+import com.example.data.StudentRecord
 import com.example.ui.components.ConfigureBankAccountDialog
 import com.example.ui.components.DigitalFeeReceiptDialog
 import com.example.ui.components.FeeStatusBadge
@@ -75,17 +75,17 @@ import com.example.ui.theme.StatusPresentGreen
 
 @Composable
 fun AdminFeesTab(
-    students: List<StudentEntity>,
-    fees: List<FeeRecordEntity>,
+    students: List<StudentRecord>,
+    fees: List<FeeRecord>,
     paymentAccount: SchoolPaymentAccount,
     totalCollectedRs: Int,
     totalPendingDuesRs: Int,
     onSavePaymentAccount: (SchoolPaymentAccount) -> Unit,
-    onToggleFeeStatus: (FeeRecordEntity) -> Unit,
-    onDeleteFee: (Long) -> Unit
+    onToggleFeeStatus: (FeeRecord) -> Unit,
+    onDeleteFee: (String) -> Unit
 ) {
     var statusFilter by remember { mutableStateOf("All") }
-    var receiptToShow by remember { mutableStateOf<Pair<FeeRecordEntity, StudentEntity>?>(null) }
+    var receiptToShow by remember { mutableStateOf<Pair<FeeRecord, StudentRecord>?>(null) }
     var showAccountConfigDialog by remember { mutableStateOf(false) }
 
     val studentById = remember(students) { students.associateBy { it.id } }
@@ -282,8 +282,9 @@ fun AdminFeesTab(
                         }
 
                         if (isPaid && fee.transactionRef.isNotBlank()) {
+                            val payerSuffix = if (fee.payerAccountNote.isNotBlank()) " • From: ${fee.payerAccountNote}" else ""
                             Text(
-                                text = "Paid via ${fee.paymentMethod} • Ref: ${fee.transactionRef}",
+                                text = "Paid via ${fee.paymentMethod} • Ref: ${fee.transactionRef}$payerSuffix",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontFamily = JetBrainsMonoFontFamily,
                                     color = StatusPresentGreen
@@ -369,9 +370,9 @@ fun AdminFeesTab(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GenerateFeeInvoiceDialog(
-    students: List<StudentEntity>,
+    students: List<StudentRecord>,
     onDismiss: () -> Unit,
-    onCreate: (studentId: Long, monthLabel: String, tuition: Int, transport: Int, exam: Int, status: FeeStatus) -> Unit
+    onCreate: (student: StudentRecord, monthLabel: String, tuition: Int, transport: Int, exam: Int, status: FeeStatus) -> Unit
 ) {
     var selectedStudent by remember { mutableStateOf(students.firstOrNull()) }
     var studentMenuExpanded by remember { mutableStateOf(false) }
@@ -465,7 +466,7 @@ fun GenerateFeeInvoiceDialog(
                 onClick = {
                     val target = selectedStudent ?: return@Button
                     onCreate(
-                        target.id,
+                        target,
                         monthLabel,
                         tuitionText.toIntOrNull() ?: 0,
                         transportText.toIntOrNull() ?: 0,
