@@ -1,0 +1,6 @@
+{
+  "name": "Oxford School Budgam",
+  "description": "School Management Application for OXFORD SCHOOL EDUCATION BUDGAM featuring Admin and Student/Parent portals, 30-day attendance tracking, monthly fee management in Rs, digital fee receipts, and daily school diary.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
